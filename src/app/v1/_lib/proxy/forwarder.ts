@@ -2716,6 +2716,17 @@ export class ProxyForwarder {
       overrides["anthropic-beta"] = Array.from(betaFlags).join(", ");
     }
 
+    // 透传 CCH 已解析/生成的 session ID 到上游（例如 CPA）。
+    // 仅在客户端未显式提供时补写，避免覆盖客户端原语义。
+    if (session.sessionId) {
+      if (!session.headers.get("session_id")) {
+        overrides.session_id = session.sessionId;
+      }
+      if (!session.headers.get("x-session-id")) {
+        overrides["x-session-id"] = session.sessionId;
+      }
+    }
+
     const headerProcessor = HeaderProcessor.createForProxy({
       blacklist: ["content-length", "connection"], // 删除 content-length（动态计算）和 connection（undici 自动管理）
       preserveClientIpHeaders: preserveClientIp,
@@ -2750,6 +2761,17 @@ export class ProxyForwarder {
 
     if (provider.providerType === "gemini-cli") {
       overrides[GEMINI_PROTOCOL.HEADERS.API_CLIENT] = "GeminiCLI/1.0";
+    }
+
+    // 透传 CCH 已解析/生成的 session ID 到上游（例如 CPA）。
+    // 仅在客户端未显式提供时补写，避免覆盖客户端原语义。
+    if (session.sessionId) {
+      if (!session.headers.get("session_id")) {
+        overrides.session_id = session.sessionId;
+      }
+      if (!session.headers.get("x-session-id")) {
+        overrides["x-session-id"] = session.sessionId;
+      }
     }
 
     if (preserveClientIp) {

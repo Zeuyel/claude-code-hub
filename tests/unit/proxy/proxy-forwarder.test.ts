@@ -153,6 +153,23 @@ describe("ProxyForwarder - buildHeaders User-Agent resolution", () => {
     // 空字符串应该被保留（使用 ?? 而非 ||）
     expect(resultHeaders.get("user-agent")).toBe("");
   });
+
+  it("应在缺失时注入 session_id 与 x-session-id（通用头透传）", () => {
+    const session = createSession({
+      userAgent: "Original-UA/1.0",
+      headers: new Headers([["user-agent", "Original-UA/1.0"]]),
+    });
+    session.setSessionId("sess_1234567890abcdef12345");
+
+    const provider = createCodexProvider();
+    const { buildHeaders } = ProxyForwarder as unknown as {
+      buildHeaders: (session: ProxySession, provider: Provider) => Headers;
+    };
+    const resultHeaders = buildHeaders(session, provider);
+
+    expect(resultHeaders.get("session_id")).toBe("sess_1234567890abcdef12345");
+    expect(resultHeaders.get("x-session-id")).toBe("sess_1234567890abcdef12345");
+  });
 });
 
 describe("ProxyForwarder - buildGeminiHeaders headers passthrough", () => {
@@ -306,5 +323,34 @@ describe("ProxyForwarder - buildGeminiHeaders headers passthrough", () => {
     );
 
     expect(resultHeaders.get("x-goog-api-client")).toBe("GeminiCLI/1.0");
+  });
+
+  it("Gemini 头构建应在缺失时注入 session_id 与 x-session-id", () => {
+    const session = createSession({
+      userAgent: "Original-UA/1.0",
+      headers: new Headers([["user-agent", "Original-UA/1.0"]]),
+    });
+    session.setSessionId("sess_1234567890abcdef12345");
+
+    const provider = createGeminiProvider("gemini");
+    const { buildGeminiHeaders } = ProxyForwarder as unknown as {
+      buildGeminiHeaders: (
+        session: ProxySession,
+        provider: Provider,
+        baseUrl: string,
+        accessToken: string,
+        isApiKey: boolean
+      ) => Headers;
+    };
+    const resultHeaders = buildGeminiHeaders(
+      session,
+      provider,
+      "https://generativelanguage.googleapis.com/v1beta",
+      "upstream-api-key",
+      true
+    );
+
+    expect(resultHeaders.get("session_id")).toBe("sess_1234567890abcdef12345");
+    expect(resultHeaders.get("x-session-id")).toBe("sess_1234567890abcdef12345");
   });
 });
